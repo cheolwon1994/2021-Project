@@ -5,14 +5,7 @@ public class Truck {
 	private int id;
 	private int location_id;
 	private int loaded_bikes_count;
-	private List<Integer> command;
-	
-	public List<Integer> getCommand() {
-		return command;
-	}
-	public void setCommand(List<Integer> command) {
-		this.command = command;
-	}
+
 	public int getId() {
 		return id;
 	}
@@ -34,13 +27,12 @@ public class Truck {
 	
 	public Truck(int id, int location_id, int loaded_bikes_count) {
 		super();
-		this.command = new ArrayList<>();
 		this.id = id;
 		this.location_id = location_id;
 		this.loaded_bikes_count = loaded_bikes_count;
 	}
 	
-	public boolean check(int num, int mini, int maxi, int diff) {
+	/*public int check(int num, int mini, int maxi) {
 		int tid = this.id;
 		int tx = getX(num,tid);
 		int ty = getY(num,tid);
@@ -50,50 +42,9 @@ public class Truck {
 		int maxiY = getY(num,maxi);
 		int firstDist = Math.abs(maxiY-ty)+Math.abs(maxiX-tx);
 		int SecDist = Math.abs(maxiY-miniY)+Math.abs(maxiX-miniX);
-		if(firstDist+SecDist+2*diff>10) return false;
-		return true;
+		int remain = 10 - (firstDist+SecDist);
+		if(remain<2) return -1;
+		return remain/2;
 	}
-	
-	public void move(int num, int idx) {
-		int tid = this.id;
-		int tx = getX(num,tid);
-		int ty = getY(num,tid);
-		int lx = getX(num,idx);
-		int ly = getY(num,idx);
-		
-		while(tx<lx) {		//오른쪽으로 이동
-			command.add(2);
-			tx++;
-		}
-		while(tx>lx) {		//왼쪽으로 이동
-			command.add(4);
-			tx--;
-		}
-		
-		while(ty<ly) {		//아래로 이동
-			command.add(3);
-			ty++;
-		}
-		while(ty>ly) {		//위로 이동
-			command.add(1);
-			ty--;
-		}
-		this.id = idx;
-	}
-	
-	public void uploadBike() {
-		command.add(5);
-	}
-	
-	public void unloadBike() {
-		command.add(6);
-	}
-	
-	private int getY(int num, int bId) {
-		return num-(bId%num)-1;
-	}
-	
-	private int getX(int num, int bId) {
-		return bId/num;
-	}
+	*/
 }

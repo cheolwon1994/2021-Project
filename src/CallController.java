@@ -21,10 +21,11 @@ public class CallController {
 	//private static int locId[][];
 	//private static int bikeCnt[];
 	private static List<Truck> truckList;
+	private static List<Integer> singleCommand;
 	private static int num;		//서비스 지역 크기
 	private static int freq;	//자전거 대여 요청 빈도
 	private static int bike;		//자전거 수
-	private static int truck;		//트럭 수
+	private static int truckNum;		//트럭 수
 	private static int initBike;		//초기 자전거 수
 	private static List<Customer> order;
 	private static int[][] rangeY = {{0, 2}, {2, 4}, {0, 2}, {2, 4}, {1, 3}};
@@ -35,20 +36,18 @@ public class CallController {
 			this.num=5;
 			this.freq=2;
 			this.bike=100;
-			this.truck=5;
+			this.truckNum=5;
 			this.initBike = 4;
 		}
 		else {		//시나리오 2
 			this.num=36;
 			this.freq=15;
 			this.bike=10800;
-			this.truck=10;
+			this.truckNum=10;
 			this.initBike = 3;
 		}
 		
 		//초기화
-		//order = new ArrayList<>();
-		//order 채우기
 		//loadTxtFile();
 		
 		move(auth_key);
@@ -69,6 +68,11 @@ public class CallController {
 			System.out.println("id: "+bikeArr.get(i).getId()+" 자전거 수: "+bikeArr.get(i).getLocated_bikes_count());
 	}
 	
+	private void printTruck() {
+		for(int i=0;i<num;i++)
+			System.out.println("id: "+truckList.get(i).getId()+" 트럭 위치 : "+truckList.get(i).getLocation_id()+" 보유한 자전거 수: "+truckList.get(i).getLoaded_bikes_count());
+	}
+	
 	private void setTruck(String auth_key) {
 		truckList = new ArrayList<>();
 		List<Truck> truckInfo = Connection.getInstance().getTruck(auth_key);
@@ -80,44 +84,131 @@ public class CallController {
 		}
 	}
 	
-	private int findMin(int i, Truck t) {
+	private int findMin() {
 		int mini = -1;
-		for(int y=rangeY[i][0];y<=rangeY[i][1];y++) {
-			for(int x = rangeX[i][0];x<=rangeX[i][1];x++) {
-				int idx = x*num+y;
-				if(mini==-1 || bikeArr.get(mini).getLocated_bikes_count()>bikeArr.get(idx).getLocated_bikes_count()) {
-					mini = idx;
-				}
-			}
+		for(int i=0;i<num*num;i++) {
+			if(mini==-1 || bikeArr.get(mini).getLocated_bikes_count()>bikeArr.get(i).getLocated_bikes_count())
+				mini = i;
 		}
 		return mini;
 	}
-	
-	private int findMax(int i, Truck t) {
+
+	private int findMax() {
 		int maxi = -1;
-		for(int y=rangeY[i][0];y<=rangeY[i][1];y++) {
-			for(int x = rangeX[i][0];x<=rangeX[i][1];x++) {
-				int idx = x*num+y;
-				if(maxi==-1 || bikeArr.get(maxi).getLocated_bikes_count()<bikeArr.get(idx).getLocated_bikes_count()) {
-					maxi = idx;
-				}
-			}
+		for(int i=0;i<num*num;i++) {
+			if(maxi==-1 || bikeArr.get(maxi).getLocated_bikes_count()<bikeArr.get(i).getLocated_bikes_count())
+				maxi = i;
 		}
 		return maxi;
 	}
 	
-	private boolean transfer(Truck truck, int mini, int maxi) {
-		//maxi에서 싣고 mini로 운반
-		int diff = (bikeArr.get(maxi).getLocated_bikes_count()-bikeArr.get(mini).getLocated_bikes_count())/2;
-		if(!truck.check(num,mini,maxi,diff)) return false;
-		truck.move(num, bikeArr.get(maxi).getId());
-		truck.uploadBike();
-		truck.move(num, bikeArr.get(mini).getId());
-		truck.unloadBike();
-		//System.out.println("Diff: "+diff);
-		bikeArr.get(maxi).setLocated_bikes_count(bikeArr.get(maxi).getLocated_bikes_count()-diff);
-		bikeArr.get(mini).setLocated_bikes_count(bikeArr.get(mini).getLocated_bikes_count()+diff);
-		return true;
+	public void uploadBike() {
+		singleCommand.add(5);
+	}
+	
+	public void unloadBike() {
+		singleCommand.add(6);
+	}
+	
+	private int getY(int bId) {
+		return num-(bId%num)-1;
+	}
+	
+	private int getX(int bId) {
+		return bId/num;
+	}
+	
+	private int calDist(int id, int from, int to, int cnt) {
+		int fromX = getX(from);
+		int fromY = getY(from);
+		int toX = getX(to);
+		int toY = getY(to);
+		//System.out.println("fromY, fromX, toY, toX, cnt: "+fromY+" "+fromX+" "+toY+" "+toX+" "+cnt);
+		while(cnt<10) {
+			while(fromX<toX) {		//오른쪽으로 이동
+				singleCommand.add(2);
+				fromX++;
+				if(++cnt==10) break;
+			}
+			if(cnt==10) break;
+			while(fromX>toX) {		//왼쪽으로 이동
+				singleCommand.add(4);
+				fromX--;
+				if(++cnt==10) break;
+			}
+			if(cnt==10) break;
+			while(fromY<toY) {		//아래로 이동
+				singleCommand.add(3);
+				fromY++;
+				if(++cnt==10) break;
+			}
+			if(cnt==10) break;
+			while(fromY>toY) {		//위로 이동
+				singleCommand.add(1);
+				fromY--;
+				if(++cnt==10) break;
+			}
+			break;
+		}
+		truckList.get(id).setLocation_id(fromX*num+(num-1)-fromY);
+		return cnt;
+	}
+	
+	private void commandTruck(Truck truck) {
+		int loadedBikeCnt = truck.getLoaded_bikes_count();
+		boolean goMinFirst = false;
+		if(loadedBikeCnt>0)	goMinFirst=true;
+		int len = 0, idx=-1;
+		while(len<10) {
+			if(goMinFirst) {
+				//최소 장소로 이동
+				idx = findMin();
+				len=calDist(truck.getId(), truck.getLocation_id(),idx, len);
+				if(len>=10) break;
+				//내린다
+				while(loadedBikeCnt>0 && len<10) {
+					len++;
+					loadedBikeCnt--;
+					unloadBike();
+					bikeArr.get(idx).setLocated_bikes_count(bikeArr.get(idx).getLocated_bikes_count()+1);
+					truck.setLoaded_bikes_count(loadedBikeCnt);
+				}
+				if(len==10) break;
+				goMinFirst=false;
+			}
+			//최대장소로 이동
+			idx = findMax();
+			len=calDist(truck.getId(), truck.getLocation_id(),idx, len);
+			if(len>=10) break;
+			
+			//싣는다
+			int maxBike = bikeArr.get(idx).getLocated_bikes_count();
+			int loadedBike = 0;
+			while(loadedBike<maxBike && len<10) {
+				len++;
+				loadedBike++;
+				uploadBike();
+				bikeArr.get(idx).setLocated_bikes_count(bikeArr.get(idx).getLocated_bikes_count()-1);
+				truck.setLoaded_bikes_count(loadedBike);
+			}
+			if(len==10) break;
+			
+			//최소 장소로 이동
+			idx = findMin();
+			len=calDist(truck.getId(), truck.getLocation_id(),idx, len);
+			if(len==10) break;
+			
+			//내린다
+			loadedBikeCnt = truck.getLoaded_bikes_count();
+			while(loadedBikeCnt>0 && len<10) {
+				len++;
+				loadedBikeCnt--;
+				unloadBike();
+				bikeArr.get(idx).setLocated_bikes_count(bikeArr.get(idx).getLocated_bikes_count()+1);
+				truck.setLoaded_bikes_count(loadedBikeCnt);
+			}
+			if(len==10) break;
+		}
 	}
 	
 	private void move(String auth_key) {
@@ -126,23 +217,13 @@ public class CallController {
 			List<Simulate> command = new ArrayList<>();
 			setBike(auth_key);
 			setTruck(auth_key);
-			//print();
-			//System.out.println("K: "+k);
 			
-			for(int i=0;i<truck;i++) {
-				int mini = findMin(i,truckList.get(i));
-				int maxi = findMax(i,truckList.get(i));
-				
-				//System.out.println("mini, maxi: "+mini+" "+maxi);
-				if(mini!=-1 && maxi!=-1 && bikeArr.get(mini).getLocated_bikes_count()<bikeArr.get(maxi).getLocated_bikes_count()) {
-					if(transfer(truckList.get(i),mini,maxi)) {
-						//System.out.println("If문 안");
-						//System.out.println("mini, maxi: "+mini+" "+maxi);
-						command.add(new Simulate(i, truckList.get(i).getCommand()));
-					}
-				}
+			for(int i=0;i<truckNum;i++) {
+				singleCommand = new ArrayList<>();
+				commandTruck(truckList.get(i));
+				if(!singleCommand.isEmpty())
+					command.add(new Simulate(i, singleCommand));
 			}
-			
 			SimulateRespond respond = Connection.getInstance().simulate(auth_key, command);
 			if(respond.getStatus().equals("finished")){
 				float score = Connection.getInstance().getScore(auth_key);

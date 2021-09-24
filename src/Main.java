@@ -82,7 +82,7 @@ public class Main {
 	}
 	 */
 	
-	static final String x_auth_token = "7ce76e4e8a287e602b08bdee30590ff0";
+	static final String x_auth_token = "9c32d768a11b9f6d9ab53490b2354694";
 	static final int problem = 1;
 	//static final int problem = 2;
 	
